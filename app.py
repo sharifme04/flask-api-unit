@@ -9,11 +9,30 @@ books = [
 ]
 
 
+@app.errorhandler(404)
+def not_found_error(error):
+    return jsonify({"error": "Not Found"}), 404
+
+
+@app.errorhandler(405)
+def method_not_allowed_error(error):
+    return jsonify({"error": "Method Not Allowed"}), 405
+
+
+def validate_book_data(data):
+    """A book must be a JSON object with a title and an author."""
+    if not isinstance(data, dict) or "title" not in data or "author" not in data:
+        return False
+    return True
+
+
 @app.route('/api/books', methods=['GET', 'POST'])
 def handle_books():
     if request.method == 'POST':
         # Get the new book data from the client
-        new_book = request.get_json()
+        new_book = request.get_json(silent=True)
+        if not validate_book_data(new_book):
+            return jsonify({"error": "Invalid book data"}), 400
 
         # Generate a new ID for the book
         new_id = max((book['id'] for book in books), default=0) + 1
