@@ -1,6 +1,9 @@
 from flask import Flask, jsonify, request
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
+limiter = Limiter(app=app, key_func=get_remote_address, storage_uri="memory://")
 
 # Our list of books (stored in memory, no database yet)
 books = [
@@ -24,6 +27,11 @@ def method_not_allowed_error(error):
     return jsonify({"error": "Method Not Allowed"}), 405
 
 
+@app.errorhandler(429)
+def rate_limit_error(error):
+    return jsonify({"error": "Too Many Requests", "message": str(error.description)}), 429
+
+
 def validate_book_data(data):
     """A book must be a JSON object with a title and an author."""
     if not isinstance(data, dict) or "title" not in data or "author" not in data:
@@ -32,6 +40,7 @@ def validate_book_data(data):
 
 
 @app.route('/api/books', methods=['GET', 'POST'])
+@limiter.limit("10/minute", methods=["GET"])  # Limit reading to 10 requests per minute
 def handle_books():
     if request.method == 'POST':
         # Get the new book data from the client

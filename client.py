@@ -5,6 +5,8 @@ Example: python3 client.py https://your-codio-url-5000.codio.io
 """
 import json
 import sys
+import time
+import urllib.error
 import urllib.request
 
 BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:5000"
@@ -13,9 +15,18 @@ LIMIT = 10
 
 def fetch_page(page):
     url = f"{BASE_URL}/api/books?page={page}&limit={LIMIT}"
-    with urllib.request.urlopen(url) as response:
-        total = int(response.headers.get("X-Total-Count", 0))
-        return json.load(response), total
+    while True:
+        try:
+            with urllib.request.urlopen(url) as response:
+                total = int(response.headers.get("X-Total-Count", 0))
+                return json.load(response), total
+        except urllib.error.HTTPError as error:
+            if error.code != 429:
+                raise
+            # Rate limited: wait and try again
+            wait = int(error.headers.get("Retry-After", 60))
+            print(f"Rate limit reached, waiting {wait} seconds...")
+            time.sleep(wait)
 
 
 def main():
