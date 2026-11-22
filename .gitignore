@@ -1,0 +1,7 @@
+api.md
+__pycache__/
+.idea/
+venv/
+.venv/
+.DS_Store
+._*
