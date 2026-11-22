@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -9,9 +9,23 @@ books = [
 ]
 
 
-@app.route('/api/books', methods=['GET'])
+@app.route('/api/books', methods=['GET', 'POST'])
 def handle_books():
-    return jsonify(books)
+    if request.method == 'POST':
+        # Get the new book data from the client
+        new_book = request.get_json()
+
+        # Generate a new ID for the book
+        new_id = max((book['id'] for book in books), default=0) + 1
+        new_book['id'] = new_id
+
+        # Add the new book to our list
+        books.append(new_book)
+
+        # Return the new book data to the client
+        return jsonify(new_book), 201
+    else:
+        return jsonify(books)
 
 
 if __name__ == '__main__':
