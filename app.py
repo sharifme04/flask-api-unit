@@ -44,6 +44,10 @@ def handle_books():
         # Return the new book data to the client
         return jsonify(new_book), 201
     else:
+        # Optional filter: /api/books?author=George Orwell
+        author = request.args.get('author')
+        if author:
+            return jsonify([book for book in books if book.get('author') == author])
         return jsonify(books)
 
 
