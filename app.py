@@ -7,6 +7,11 @@ books = [
     {"id": 1, "title": "The Great Gatsby", "author": "F. Scott Fitzgerald"},
     {"id": 2, "title": "1984", "author": "George Orwell"}
 ]
+# Add fake books so that there are 100 in total (used to test pagination)
+books += [
+    {"id": i, "title": f"Sample Book {i}", "author": f"Author {i % 5 + 1}"}
+    for i in range(3, 101)
+]
 
 
 @app.errorhandler(404)
@@ -45,10 +50,27 @@ def handle_books():
         return jsonify(new_book), 201
     else:
         # Optional filter: /api/books?author=George Orwell
+        result = books
         author = request.args.get('author')
         if author:
-            return jsonify([book for book in books if book.get('author') == author])
-        return jsonify(books)
+            result = [book for book in books if book.get('author') == author]
+
+        # Pagination: /api/books?page=2&limit=10
+        try:
+            page = int(request.args.get('page', 1))
+            limit = int(request.args.get('limit', 10))
+        except ValueError:
+            return jsonify({"error": "page and limit must be integers"}), 400
+        if page < 1 or limit < 1:
+            return jsonify({"error": "page and limit must be positive"}), 400
+
+        start_index = (page - 1) * limit
+        end_index = start_index + limit
+
+        response = jsonify(result[start_index:end_index])
+        # Let clients know how many books exist in total
+        response.headers['X-Total-Count'] = str(len(result))
+        return response
 
 
 def find_book_by_id(book_id):
