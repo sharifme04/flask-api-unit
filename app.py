@@ -1,8 +1,15 @@
+import logging
+
 from flask import Flask, jsonify, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(levelname)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 limiter = Limiter(app=app, key_func=get_remote_address, storage_uri="memory://")
 
 # Our list of books (stored in memory, no database yet)
@@ -43,9 +50,11 @@ def validate_book_data(data):
 @limiter.limit("10/minute", methods=["GET"])  # Limit reading to 10 requests per minute
 def handle_books():
     if request.method == 'POST':
+        app.logger.info('POST request received for /api/books')
         # Get the new book data from the client
         new_book = request.get_json(silent=True)
         if not validate_book_data(new_book):
+            app.logger.warning('Invalid book data received: %s', new_book)
             return jsonify({"error": "Invalid book data"}), 400
 
         # Generate a new ID for the book
@@ -58,6 +67,7 @@ def handle_books():
         # Return the new book data to the client
         return jsonify(new_book), 201
     else:
+        app.logger.info('GET request received for /api/books')
         # Optional filter: /api/books?author=George Orwell
         result = books
         author = request.args.get('author')
@@ -98,6 +108,7 @@ def handle_book(id):
 
     # If the book wasn't found, return a 404 error
     if book is None:
+        app.logger.warning('PUT: book %s not found', id)
         return '', 404
 
     # Update the book with the new data
@@ -123,10 +134,12 @@ def delete_book(id):
 
     # If the book wasn't found, return a 404 error
     if book is None:
+        app.logger.warning('DELETE: book %s not found', id)
         return '', 404
 
     # Remove the book from the list
     books.remove(book)
+    app.logger.info('Book %s deleted', id)
 
     # Return the deleted book
     return jsonify(book)
